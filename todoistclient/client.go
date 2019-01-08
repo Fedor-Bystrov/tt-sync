@@ -1,11 +1,14 @@
 package todoistclient
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 )
 
 var (
+	apiURL = "https://beta.todoist.com/API/v8"
+
 	httpClient *http.Client
 )
 
@@ -41,4 +44,14 @@ func (c Client) GetTasks() []Task {
 // corresponding to given token
 func (c Client) GetComments() []Comment {
 	return nil
+}
+
+func (c Client) newRequest(method, url string) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	return req, nil
 }
