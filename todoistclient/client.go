@@ -36,3 +36,9 @@ func (c Client) GetProjects() []Project {
 func (c Client) GetTasks() []Task {
 	return nil
 }
+
+// GetComments returns all comments for user
+// corresponding to given token
+func (c Client) GetComments() []Comment {
+	return nil
+}
