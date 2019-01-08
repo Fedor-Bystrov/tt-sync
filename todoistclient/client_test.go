@@ -15,9 +15,9 @@ const (
 )
 
 var (
-	testServer   *httptest.Server
-	testClient   *http.Client
-	wunderClient *Client
+	testServer    *httptest.Server
+	testClient    *http.Client
+	todoistClient *Client
 
 	uriMap = initURIMap()
 )
@@ -46,14 +46,14 @@ func initURIMap() map[string]string {
 func setUp() {
 	testServer = httptest.NewServer(http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		// Check that auth header is present
-		if getHeader("X-Client-Id", req) == fmt.Sprintf("Bearer %s", authToken) {
+		if getHeader("Authorization", req) == fmt.Sprintf("Bearer %s", authToken) {
 			res.Write([]byte(uriMap[req.RequestURI]))
 		} else {
 			res.Write(nil)
 		}
 	}))
 	testClient = testServer.Client()
-	wunderClient = NewClient(authToken, testClient)
+	todoistClient = NewClient(authToken, testClient)
 	// Changing apiURL to point to testServer
 	reflect.ValueOf(&apiURL).Elem().SetString(testServer.URL)
 }
@@ -73,5 +73,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestGetProjects(t *testing.T) {
-	assert.NotNil(t, nil)
+	expProjects := []Project{
+		Project{2200002914, "Inbox", 0, 1, 0},
+		Project{2202928608, "Active Projects", 1, 1, 0},
+	}
+	projects, err := todoistClient.GetProjects()
+	assert.Nil(t, err)
+	assert.ElementsMatch(t, expProjects, projects)
 }
