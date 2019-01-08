@@ -34,7 +34,7 @@ func NewClient(token string, client *http.Client) *Client {
 // corresponding to given token
 func (c Client) GetProjects() ([]Project, error) {
 	log.Print("[TodoistClient#GetProjects] Fetching projects")
-	req, err := c.newRequest(http.MethodGet, fmt.Sprintf("%v/projects", apiURL))
+	req, err := c.newRequest(http.MethodGet, fmt.Sprintf("%s/projects", apiURL))
 	if err != nil {
 		log.Print("[TodoistClient#GetProjects] Error fetching projects", err)
 		return nil, err
@@ -61,7 +61,29 @@ func (c Client) GetProjects() ([]Project, error) {
 // GetTasks returns all tasks for user
 // corresponding to given token
 func (c Client) GetTasks() ([]Task, error) {
-	return nil, nil
+	log.Print("[TodoistClient#GetTasks] Fetching tasks")
+	req, err := c.newRequest(http.MethodGet, fmt.Sprintf("%s/tasks", apiURL))
+	if err != nil {
+		log.Print("[TodoistClient#GetTasks] Error fetching tasks", err)
+		return nil, err
+	}
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		log.Print("[TodoistClient#GetTasks] Error fetching tasks", err)
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	tasks := make([]Task, 0)
+	err = json.NewDecoder(res.Body).Decode(&tasks)
+	if err != nil {
+		log.Print("[TodoistClient#GetTasks] Error during decoding todoist response", err)
+		return nil, err
+	}
+
+	log.Print("[TodoistClient#GetTasks] Tasks fetched successfully")
+	return tasks, nil
 }
 
 // GetComments returns all comments for user

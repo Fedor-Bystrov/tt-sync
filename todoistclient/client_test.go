@@ -52,7 +52,7 @@ func initURIMap() map[string]string {
 				"indent": 1,
 				"priority": 1,
 				"comment_count": 0,
-				"url": "https://todoist.com/showTask?id=3"
+				"url": "url_1"
 			},
 			{
 				"id": 4,
@@ -64,7 +64,7 @@ func initURIMap() map[string]string {
 				"indent": 1,
 				"priority": 1,
 				"comment_count": 0,
-				"url": "https://todoist.com/showTask?id=4",
+				"url": "url_2",
 				"due": {
 					"recurring": false,
 					"string": "Jan 8",
@@ -81,8 +81,8 @@ func initURIMap() map[string]string {
 				"indent": 1,
 				"priority": 1,
 				"comment_count": 10,
-				"url": "https://todoist.com/showTask?id=5"
-			}`,
+				"url": "url_3"
+			}]`,
 	}
 }
 
@@ -128,13 +128,14 @@ func TestGetProjects(t *testing.T) {
 
 func TestGetTasks(t *testing.T) {
 	expTasks := []Task{
-		Task{3, 1, "content_1", false, nil, 3, 1, 1, nil,
-			"\"https://todoist.com/showTask?id=3\"", 0},
-		Task{4, 2, "content_2", false, []uint{1}, 4, 1, 1,
-			&Due{false, "Jan 8", "2019-01-08"},
-			"\"https://todoist.com/showTask?id=4\"", 0},
-		Task{5, 3, "content_3", true, []uint{1, 2, 3}, 4, 1, 1, nil,
-			"\"https://todoist.com/showTask?id=5\"", 10},
+		Task{ID: 3, ProjectID: 1, Content: "content_1", Completed: false,
+			Order: 3, Indent: 1, Priority: 1, CommentCount: 0, URL: "url_1", LabelIDs: make([]uint, 0)},
+
+		Task{ID: 4, ProjectID: 2, Content: "content_2", Completed: false, Due: &Due{false, "Jan 8", "2019-01-08"},
+			Order: 4, Indent: 1, Priority: 1, CommentCount: 0, URL: "url_2", LabelIDs: []uint{1}},
+
+		Task{ID: 5, ProjectID: 3, Content: "content_3", Completed: true,
+			Order: 4, Indent: 1, Priority: 1, CommentCount: 10, URL: "url_3", LabelIDs: []uint{1, 2, 3}},
 	}
 	tasks, err := todoistClient.GetTasks()
 	assert.Nil(t, err)

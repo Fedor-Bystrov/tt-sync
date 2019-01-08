@@ -32,8 +32,10 @@ type Task struct {
 }
 
 func (t Task) String() string {
-	return fmt.Sprintf("Task{id: %d project_id: %d, content: %s, url: %s}",
-		t.ID, t.ProjectID, t.Content, t.URL)
+	return fmt.Sprintf("Task{id: %d, project_id: %d, content: %s, completed: %v, label_ids: %v, "+
+		"order: %d indent: %d, priority: %d, due: %v, url: %s, comment_count: %d}",
+		t.ID, t.ProjectID, t.Content, t.Completed, t.LabelIDs, t.Order, t.Indent,
+		t.Priority, t.Due, t.URL, t.CommentCount)
 }
 
 // Due represents Todoist Due date object
