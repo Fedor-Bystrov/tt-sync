@@ -65,6 +65,7 @@ func getHeader(key string, req *http.Request) string {
 	}
 	return ""
 }
+
 func TestMain(m *testing.M) {
 	setUp()
 	retCode := m.Run()
