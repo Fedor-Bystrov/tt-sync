@@ -2,10 +2,9 @@ package todoistclient
 
 import (
 	"fmt"
-	"time"
 )
 
-// Task is a Todoist Task entity
+// Task represents Todoist Task entity
 // Properties:
 // ID - Task id.
 // ProjectID - Integer Task’s project id (read-only).
@@ -15,7 +14,7 @@ import (
 // Order - Position in the project (read-only).
 // Indent - Task indentation level from 1 to 5 (read-only).
 // Priority - Task priority from 1 (normal, default value) to 4 (urgent).
-// Due - object representing task due date/time (described below).
+// Due - object representing task due date/time.
 // URL - URL to access this task in Todoist web interface.
 // CommentCount - Number of task comments.
 type Task struct {
@@ -27,7 +26,7 @@ type Task struct {
 	Order        uint
 	Indent       uint
 	Priority     uint
-	Due          time.Time
+	Due          *Due
 	URL          string
 	CommentCount uint `json:"comment_count"`
 }
@@ -35,4 +34,15 @@ type Task struct {
 func (t Task) String() string {
 	return fmt.Sprintf("Task{id: %d project_id: %d, content: %s, url: %s}",
 		t.ID, t.ProjectID, t.Content, t.URL)
+}
+
+// Due represents Todoist Due date object
+type Due struct {
+	Recurring bool
+	Str       string `json:"string"`
+	Date      string
+}
+
+func (d Due) String() string {
+	return fmt.Sprintf("Due{reccuring: %v string: %s, date: %s}", d.Recurring, d.Str, d.Date)
 }
