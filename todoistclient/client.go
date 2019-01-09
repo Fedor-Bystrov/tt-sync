@@ -118,7 +118,6 @@ func (c Client) newRequest(method, url string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
 	return req, nil
 }
