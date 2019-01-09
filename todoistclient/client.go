@@ -88,7 +88,29 @@ func (c Client) GetTasks() ([]Task, error) {
 
 // GetComments returns all task comments given task_id
 func (c Client) GetComments(taskID uint) ([]Comment, error) {
-	return nil, nil
+	log.Print(fmt.Sprintf("[TodoistClient#GetComments] Fetching comments for task_id: %d", taskID))
+	req, err := c.newRequest(http.MethodGet, fmt.Sprintf("%s/comments?task_id=%d", apiURL, taskID))
+	if err != nil {
+		log.Print("[TodoistClient#GetComments] Error fetching comments", err)
+		return nil, err
+	}
+
+	res, err := httpClient.Do(req)
+	if err != nil {
+		log.Print("[TodoistClient#GetComments] Error fetching comments", err)
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	comments := make([]Comment, 0)
+	err = json.NewDecoder(res.Body).Decode(&comments)
+	if err != nil {
+		log.Print("[TodoistClient#GetComments] Error during decoding todoist response", err)
+		return nil, err
+	}
+
+	log.Print("[TodoistClient#GetComments] Comments fetched successfully")
+	return comments, nil
 }
 
 func (c Client) newRequest(method, url string) (*http.Request, error) {

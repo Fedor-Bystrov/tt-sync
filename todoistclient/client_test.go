@@ -173,7 +173,6 @@ func TestGetComments(t *testing.T) {
 		Comment{ID: 3, TaskID: 31, Content: "C", Posted: posted3},
 	}
 	comments, err := todoistClient.GetComments(123)
-	fmt.Println("Tasks: ", comments)
 	assert.Nil(t, err)
 	assert.ElementsMatch(t, expComments, comments)
 }
