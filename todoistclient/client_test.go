@@ -8,6 +8,7 @@ import (
 	"os"
 	"reflect"
 	"testing"
+	"time"
 )
 
 const (
@@ -83,6 +84,26 @@ func initURIMap() map[string]string {
 				"comment_count": 10,
 				"url": "url_3"
 			}]`,
+		// TestGetComments response
+		"/comments?task_id=123": `[
+				{
+					"id": 1,
+					"task_id": 11,
+					"posted": "2019-01-09T10:50:59Z",
+					"content": "F"
+				},
+				{
+					"id": 2,
+					"task_id": 21,
+					"posted": "2019-01-09T10:51:02Z",
+					"content": "g"
+				},
+				{
+					"id": 3,
+					"task_id": 31,
+					"posted": "2019-01-09T10:51:02Z",
+					"content": "C"
+				}]`,
 	}
 }
 
@@ -140,4 +161,19 @@ func TestGetTasks(t *testing.T) {
 	tasks, err := todoistClient.GetTasks()
 	assert.Nil(t, err)
 	assert.ElementsMatch(t, expTasks, tasks)
+}
+
+func TestGetComments(t *testing.T) {
+	posted1, _ := time.Parse(time.RFC3339, "2019-01-09T10:50:59Z")
+	posted2, _ := time.Parse(time.RFC3339, "2019-01-09T10:51:02Z")
+	posted3, _ := time.Parse(time.RFC3339, "2019-01-09T10:51:02Z")
+	expComments := []Comment{
+		Comment{ID: 1, TaskID: 11, Content: "F", Posted: posted1},
+		Comment{ID: 2, TaskID: 21, Content: "g", Posted: posted2},
+		Comment{ID: 3, TaskID: 31, Content: "C", Posted: posted3},
+	}
+	comments, err := todoistClient.GetComments(123)
+	fmt.Println("Tasks: ", comments)
+	assert.Nil(t, err)
+	assert.ElementsMatch(t, expComments, comments)
 }

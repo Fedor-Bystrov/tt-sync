@@ -86,9 +86,8 @@ func (c Client) GetTasks() ([]Task, error) {
 	return tasks, nil
 }
 
-// GetComments returns all comments for user
-// corresponding to given token
-func (c Client) GetComments() ([]Comment, error) {
+// GetComments returns all task comments given task_id
+func (c Client) GetComments(taskID uint) ([]Comment, error) {
 	return nil, nil
 }
 
