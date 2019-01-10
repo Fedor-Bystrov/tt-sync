@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Fedor-Bystrov/tt-sync/syncentity"
 	"github.com/Fedor-Bystrov/tt-sync/todoistclient"
 	"log"
 	"os"
@@ -32,30 +33,51 @@ func main() {
 	if goEnv != "development" {
 		defer logFile.Close()
 	}
-	checkVars(todoistToken)
 
+	checkVars(todoistToken)
 	todoistClient := todoistclient.NewClient(todoistToken, nil)
+
+	// 1. Fetching all projects
 	projects, err := todoistClient.GetProjects()
 	if err != nil {
 		log.Fatal("Fatal [Main] cannot fetch projects", err)
 	}
 
-	var syncProject todoistclient.Project
+	// 2. Searching for projects with [SYNC] prefix in project name
+	syncEntities := make([]syncentity.SyncEntity, 0)
 	for _, p := range projects {
 		if syncPattern.MatchString(p.Name) {
-			syncProject = p
+			syncEntities = append(syncEntities, syncentity.SyncEntity{
+				Project: p,
+				Tasks:   make([]syncentity.Task, 0),
+			})
 		}
 	}
 
+	// 3. Fetching all tasks
 	tasks, err := todoistClient.GetTasks()
 	if err != nil {
 		log.Fatal("Fatal [Main] cannot fetch tasks", err)
 	}
 
-	for _, t := range tasks {
-		if t.ProjectID == syncProject.ID {
-			log.Print(t)
+	// 4. Merging sync project, related tasks and comments into one entity
+	for i := range syncEntities {
+		for _, t := range tasks {
+			if syncEntities[i].Project.ID == t.ProjectID {
+				comments, err := todoistClient.GetComments(t.ID)
+				if err != nil {
+					log.Fatalf("Fatal [Main] cannot fetch comments for task_id: %d, err: %v", t.ID, err)
+				}
+				syncEntities[i].Tasks = append(syncEntities[i].Tasks, syncentity.Task{
+					Task:     t,
+					Comments: comments,
+				})
+			}
 		}
+	}
+
+	for _, s := range syncEntities {
+		log.Print(s)
 	}
 }
 
