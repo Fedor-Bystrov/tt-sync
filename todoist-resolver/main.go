@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/Fedor-Bystrov/tt-sync/syncentity"
 	"github.com/Fedor-Bystrov/tt-sync/todoistclient"
 	"log"
 	"os"
@@ -44,35 +43,22 @@ func main() {
 	go fetchTasks(tasksChan)
 
 	// 2. Searching for projects with [SYNC] prefix in project name
-	syncEntities := make([]syncentity.SyncEntity, 0)
-	for _, p := range <-projectsChan {
+	syncProjectChan := make(chan todoistclient.Project)
+	go filterProjects(<-projectsChan, syncProjectChan)
+
+	for result := range syncProjectChan {
+		log.Print(result)
+	}
+}
+
+func filterProjects(projects []todoistclient.Project, out chan todoistclient.Project) {
+	defer elapsed("[Elapsed] Searching for projects with [SYNC] prefix in project name")()
+	for _, p := range projects {
 		if syncPattern.MatchString(p.Name) {
-			syncEntities = append(syncEntities, syncentity.SyncEntity{
-				Project: p,
-				Tasks:   make([]syncentity.Task, 0),
-			})
+			out <- p
 		}
 	}
-
-	// 4. Merging sync project, related tasks and comments into one entity
-	for i := range syncEntities {
-		for _, t := range <-tasksChan {
-			if syncEntities[i].Project.ID == t.ProjectID {
-				comments, err := todoistClient.GetComments(t.ID)
-				if err != nil {
-					log.Fatalf("Fatal [Main] cannot fetch comments for task_id: %d, err: %v", t.ID, err)
-				}
-				syncEntities[i].Tasks = append(syncEntities[i].Tasks, syncentity.Task{
-					Task:     t,
-					Comments: comments,
-				})
-			}
-		}
-	}
-
-	for _, s := range syncEntities {
-		log.Print(s)
-	}
+	close(out)
 }
 
 func fetchProjects(projectsChan chan<- []todoistclient.Project) {
