@@ -13,6 +13,7 @@ var (
 	todoistToken   = os.Getenv("TODOIST_TOKEN")
 	goEnv          = os.Getenv("GO_ENV")
 	syncPattern, _ = regexp.Compile(`^\[SYNC\]\s.+$`)
+	todoistClient  = todoistclient.NewClient(todoistToken, nil)
 
 	logFile *os.File
 )
@@ -35,17 +36,16 @@ func main() {
 	}
 
 	checkVars(todoistToken)
-	todoistClient := todoistclient.NewClient(todoistToken, nil)
+	projectsChan := make(chan []todoistclient.Project)
+	tasksChan := make(chan []todoistclient.Task)
 
-	// 1. Fetching all projects
-	projects, err := todoistClient.GetProjects()
-	if err != nil {
-		log.Fatal("Fatal [Main] cannot fetch projects", err)
-	}
+	// 1. Fetching all projects and tasks
+	go fetchProjects(projectsChan)
+	go fetchTasks(tasksChan)
 
 	// 2. Searching for projects with [SYNC] prefix in project name
 	syncEntities := make([]syncentity.SyncEntity, 0)
-	for _, p := range projects {
+	for _, p := range <-projectsChan {
 		if syncPattern.MatchString(p.Name) {
 			syncEntities = append(syncEntities, syncentity.SyncEntity{
 				Project: p,
@@ -54,15 +54,9 @@ func main() {
 		}
 	}
 
-	// 3. Fetching all tasks
-	tasks, err := todoistClient.GetTasks()
-	if err != nil {
-		log.Fatal("Fatal [Main] cannot fetch tasks", err)
-	}
-
 	// 4. Merging sync project, related tasks and comments into one entity
 	for i := range syncEntities {
-		for _, t := range tasks {
+		for _, t := range <-tasksChan {
 			if syncEntities[i].Project.ID == t.ProjectID {
 				comments, err := todoistClient.GetComments(t.ID)
 				if err != nil {
@@ -79,6 +73,26 @@ func main() {
 	for _, s := range syncEntities {
 		log.Print(s)
 	}
+}
+
+func fetchProjects(projectsChan chan<- []todoistclient.Project) {
+	defer elapsed("[Elapsed] MAIN#fetchProjects goroutine")()
+	projects, err := todoistClient.GetProjects()
+	if err != nil {
+		log.Fatal("Fatal [Main] cannot fetch projects", err)
+	}
+	projectsChan <- projects
+	close(projectsChan)
+}
+
+func fetchTasks(tasksChan chan<- []todoistclient.Task) {
+	defer elapsed("[Elapsed] MAIN#fetchTasks goroutine")()
+	tasks, err := todoistClient.GetTasks()
+	if err != nil {
+		log.Fatal("Fatal [Main] cannot fetch tasks", err)
+	}
+	tasksChan <- tasks
+	close(tasksChan)
 }
 
 func elapsed(message string) func() {
