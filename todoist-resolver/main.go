@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/Fedor-Bystrov/tt-sync/todoistclient"
+	tc "github.com/Fedor-Bystrov/tt-sync/todoistclient"
 	"log"
 	"os"
 	"regexp"
@@ -12,7 +12,7 @@ var (
 	todoistToken   = os.Getenv("TODOIST_TOKEN")
 	goEnv          = os.Getenv("GO_ENV")
 	syncPattern, _ = regexp.Compile(`^\[SYNC\]\s.+$`)
-	todoistClient  = todoistclient.NewClient(todoistToken, nil)
+	todoistClient  = tc.NewClient(todoistToken, nil)
 
 	logFile *os.File
 )
@@ -35,23 +35,24 @@ func main() {
 	}
 
 	checkVars(todoistToken)
-	projectsChan := make(chan []todoistclient.Project)
-	tasksChan := make(chan []todoistclient.Task)
+	projects := make(chan []tc.Project)
+	tasks := make(chan []tc.Task)
+	syncProjects := make(chan tc.Project)
 
 	// 1. Fetching all projects and tasks
-	go fetchProjects(projectsChan)
-	go fetchTasks(tasksChan)
+	go fetchProjects(projects)
+	go fetchTasks(tasks)
 
 	// 2. Searching for projects with [SYNC] prefix in project name
-	syncProjectChan := make(chan todoistclient.Project)
-	go filterProjects(<-projectsChan, syncProjectChan)
+	go filterProjects(<-projects, syncProjects)
 
-	for result := range syncProjectChan {
+	for result := range syncProjects {
 		log.Print(result)
 	}
+	// TODO merge projects, tasks and comments into SyncEntity
 }
 
-func filterProjects(projects []todoistclient.Project, out chan todoistclient.Project) {
+func filterProjects(projects []tc.Project, out chan<- tc.Project) {
 	defer elapsed("[Elapsed] Searching for projects with [SYNC] prefix in project name")()
 	for _, p := range projects {
 		if syncPattern.MatchString(p.Name) {
@@ -61,24 +62,24 @@ func filterProjects(projects []todoistclient.Project, out chan todoistclient.Pro
 	close(out)
 }
 
-func fetchProjects(projectsChan chan<- []todoistclient.Project) {
+func fetchProjects(out chan<- []tc.Project) {
 	defer elapsed("[Elapsed] MAIN#fetchProjects goroutine")()
 	projects, err := todoistClient.GetProjects()
 	if err != nil {
 		log.Fatal("Fatal [Main] cannot fetch projects", err)
 	}
-	projectsChan <- projects
-	close(projectsChan)
+	out <- projects
+	close(out)
 }
 
-func fetchTasks(tasksChan chan<- []todoistclient.Task) {
+func fetchTasks(out chan<- []tc.Task) {
 	defer elapsed("[Elapsed] MAIN#fetchTasks goroutine")()
 	tasks, err := todoistClient.GetTasks()
 	if err != nil {
 		log.Fatal("Fatal [Main] cannot fetch tasks", err)
 	}
-	tasksChan <- tasks
-	close(tasksChan)
+	out <- tasks
+	close(out)
 }
 
 func elapsed(message string) func() {
