@@ -1,10 +1,13 @@
 package main
 
 import (
+	"fmt"
+	se "github.com/Fedor-Bystrov/tt-sync/syncentity"
 	tc "github.com/Fedor-Bystrov/tt-sync/todoistclient"
 	"log"
 	"os"
 	"regexp"
+	"sync"
 	"time"
 )
 
@@ -35,31 +38,60 @@ func main() {
 	}
 
 	checkVars(todoistToken)
-	projects := make(chan []tc.Project)
-	tasks := make(chan []tc.Task)
-	syncProjects := make(chan tc.Project)
+	projectRespCh := make(chan []tc.Project)
+	tasksRespCh := make(chan []tc.Task)
+	filteredProjects := make(chan tc.Project)
+	seTasks := make(chan se.Task)
 
 	// 1. Fetching all projects and tasks
-	go fetchProjects(projects)
-	go fetchTasks(tasks)
+	go fetchProjects(projectRespCh)
+	go fetchTasks(tasksRespCh)
 
 	// 2. Searching for projects with [SYNC] prefix in project name
-	go filterProjects(<-projects, syncProjects)
+	go filterProjects(projectRespCh, filteredProjects)
 
-	for result := range syncProjects {
-		log.Print(result)
+	// 3. Fetching comments for every task in each sync project
+	go commentFetcher(<-tasksRespCh, filteredProjects, seTasks)
+
+	// entities := make([]se.SyncEntity, 0)c
+	for v := range seTasks {
+		log.Print("printing", v)
 	}
-	// TODO merge projects, tasks and comments into SyncEntity
 }
 
-func filterProjects(projects []tc.Project, out chan<- tc.Project) {
-	defer elapsed("[Elapsed] Searching for projects with [SYNC] prefix in project name")()
-	for _, p := range projects {
+func commentFetcher(tasks []tc.Task, projects chan tc.Project, out chan se.Task) {
+	defer elapsed("[Elapsed] MAIN#commentFetcher goroutine")()
+	var wg sync.WaitGroup
+	for p := range projects {
+		for _, t := range tasks {
+			if t.ProjectID == p.ID {
+				wg.Add(1)
+				go fetchComments(t, out, &wg)
+			}
+		}
+	}
+	wg.Wait()
+	close(out)
+}
+
+func fetchComments(task tc.Task, out chan se.Task, wg *sync.WaitGroup) {
+	defer elapsed(fmt.Sprintf("[Elapsed] MAIN#fetchComments goroutine for task_id: %d", task.ID))()
+	comments, err := todoistClient.GetComments(task.ID)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("Fatal [Main] cannot fetch comments for task_id: %d, %v", task.ID, err))
+	}
+	out <- se.Task{Task: task, Comments: comments}
+	wg.Done()
+}
+
+func filterProjects(projects chan []tc.Project, out chan<- tc.Project) {
+	for _, p := range <-projects {
 		if syncPattern.MatchString(p.Name) {
 			out <- p
 		}
 	}
 	close(out)
+	log.Print("[MAIN#filterProjects] done filtering")
 }
 
 func fetchProjects(out chan<- []tc.Project) {
