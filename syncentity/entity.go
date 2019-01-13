@@ -13,15 +13,25 @@ type SyncEntity struct {
 	// TODO Add version field
 }
 
-// Task - Todiost task and related comments
-type Task struct {
-	Task     todoistclient.Task
-	Comments []todoistclient.Comment
+// AddTask add task to SyncEntity tasks slice
+// if slice is undefined, creates new slice
+// and appends task to it
+func (se *SyncEntity) AddTask(t Task) {
+	if se.Tasks == nil {
+		se.Tasks = make([]Task, 0)
+	}
+	se.Tasks = append(se.Tasks, t)
 }
 
 func (se SyncEntity) String() string {
 	return fmt.Sprintf("SyncEntity{project: %v, tasks: %v",
 		se.Project, se.Tasks)
+}
+
+// Task - Todiost task and related comments
+type Task struct {
+	Task     todoistclient.Task
+	Comments []todoistclient.Comment
 }
 
 func (t Task) String() string {

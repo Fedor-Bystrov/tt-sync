@@ -41,36 +41,40 @@ func main() {
 	checkVars(todoistToken)
 	projectRespCh := make(chan []tc.Project)
 	tasksRespCh := make(chan []tc.Task)
-	seTasks := make(chan se.Task)
+	seTasksCh := make(chan se.Task)
 
 	// 1. Fetching all projects and tasks
 	go fetchProjects(projectRespCh)
 	go fetchTasks(tasksRespCh)
 
 	// 2. Searching for projects with [SYNC] prefix in project name
-	syncProjects := make([]tc.Project, 0)
+	projects := make([]tc.Project, 0)
 	for _, p := range <-projectRespCh {
 		if syncPattern.MatchString(p.Name) {
-			syncProjects = append(syncProjects, p)
+			projects = append(projects, p)
 		}
 	}
 
 	// 3. Fetching comments for every task in each sync project
-	go commentFetcher(<-tasksRespCh, syncProjects, seTasks)
+	tasks := make([]se.Task, 0)
+	go resolveSyncTasks(<-tasksRespCh, projects, seTasksCh)
+	for t := range seTasksCh {
+		tasks = append(tasks, t)
+	}
 
-	for v := range seTasks {
-		log.Print(v)
+	for _, t := range tasks {
+		log.Print(t)
 	}
 }
 
-func commentFetcher(tasks []tc.Task, ps []tc.Project, out chan se.Task) {
-	defer elapsed("[Elapsed] MAIN#commentFetcher goroutine")()
+func resolveSyncTasks(tasks []tc.Task, ps []tc.Project, out chan se.Task) {
+	defer elapsed("[Elapsed] MAIN#resolveSyncTasks goroutine")()
 	var wg sync.WaitGroup
 	for _, p := range ps {
 		for _, t := range tasks {
 			if t.ProjectID == p.ID {
 				wg.Add(1)
-				go fetchComments(t, out, &wg)
+				go fetchTaskComments(t, out, &wg)
 			}
 		}
 	}
@@ -78,8 +82,8 @@ func commentFetcher(tasks []tc.Task, ps []tc.Project, out chan se.Task) {
 	close(out)
 }
 
-func fetchComments(task tc.Task, out chan se.Task, wg *sync.WaitGroup) {
-	defer elapsed(fmt.Sprintf("[Elapsed] MAIN#fetchComments goroutine for task_id: %d", task.ID))()
+func fetchTaskComments(task tc.Task, out chan se.Task, wg *sync.WaitGroup) {
+	defer elapsed(fmt.Sprintf("[Elapsed] MAIN#fetchTaskComments goroutine for task_id: %d", task.ID))()
 	comments, err := todoistClient.GetComments(task.ID)
 	if err != nil {
 		log.Fatal(fmt.Sprintf("Fatal [Main] cannot fetch comments for task_id: %d, %v", task.ID, err))
