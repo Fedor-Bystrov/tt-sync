@@ -41,7 +41,7 @@ func main() {
 	checkVars(todoistToken)
 	projectRespCh := make(chan []tc.Project)
 	tasksRespCh := make(chan []tc.Task)
-	seTasksCh := make(chan se.Task)
+	tasksCh := make(chan se.Task)
 
 	// 1. Fetching all projects and tasks
 	go fetchProjects(projectRespCh)
@@ -57,13 +57,25 @@ func main() {
 
 	// 3. Fetching comments for every task in each sync project
 	tasks := make([]se.Task, 0)
-	go resolveSyncTasks(<-tasksRespCh, projects, seTasksCh)
-	for t := range seTasksCh {
+	go resolveSyncTasks(<-tasksRespCh, projects, tasksCh)
+	for t := range tasksCh {
 		tasks = append(tasks, t)
 	}
 
-	for _, t := range tasks {
-		log.Print(t)
+	// 4. Merging projects and tasks into sync_entities
+	entities := make([]se.SyncEntity, len(projects))
+	for _, p := range projects {
+		e := se.SyncEntity{Project: p}
+		for _, t := range tasks {
+			if p.ID == t.Task.ProjectID {
+				e.AddTask(t)
+			}
+		}
+		entities = append(entities, e)
+	}
+
+	for _, e := range entities {
+		log.Print(e)
 	}
 }
 
