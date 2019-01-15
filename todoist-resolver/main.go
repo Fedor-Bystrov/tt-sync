@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -10,6 +11,8 @@ import (
 
 	se "github.com/Fedor-Bystrov/tt-sync/syncentity"
 	tc "github.com/Fedor-Bystrov/tt-sync/todoistclient"
+	"github.com/mongodb/mongo-go-driver/mongo"
+	"github.com/mongodb/mongo-go-driver/mongo/readpref"
 )
 
 var (
@@ -18,11 +21,19 @@ var (
 	syncPattern, _ = regexp.Compile(`^\[SYNC\]\s.+$`)
 	todoistClient  = tc.NewClient(todoistToken, nil)
 
-	logFile *os.File
+	ctx, cancelFunc = context.WithTimeout(context.Background(), 10*time.Second)
+	client          mongo.Client
+	logFile         *os.File
 )
 
 func init() {
 	defer elapsed("[Elapsed] INIT")()
+	checkVars(todoistToken)
+
+	// 1. Open connection to mongodb
+	client, err := mongo.Connect(ctx, "mongodb://localhost:27017")
+
+	// 2. Set up logging
 	if goEnv != "development" {
 		logFile, err := os.OpenFile("todoist-resolver.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
@@ -30,6 +41,13 @@ func init() {
 		}
 		log.SetOutput(logFile)
 	}
+
+	// 3. Check that connection established
+	err = client.Ping(ctx, readpref.Primary())
+	if err != nil {
+		log.Fatalf("Fatal [Main#init] Error connecting to mongo: %v", err)
+	}
+	log.Print("[Main#init] Connection to mongo established")
 }
 
 func main() {
@@ -38,7 +56,6 @@ func main() {
 		defer logFile.Close()
 	}
 
-	checkVars(todoistToken)
 	projectRespCh := make(chan []tc.Project)
 	tasksRespCh := make(chan []tc.Task)
 	tasksCh := make(chan se.Task)
@@ -130,7 +147,7 @@ func elapsed(message string) func() {
 }
 
 func checkVars(todoistToken string) {
-	log.Print("Checking environment variables")
+	log.Print("[Main#init] Checking environment variables")
 	if todoistToken == "" {
 		log.Fatal("Fatal [Main#checkVars] Cannot resolve TODOIST_TOKEN env variable")
 	}
