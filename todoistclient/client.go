@@ -1,6 +1,7 @@
 package todoistclient
 
 import (
+	"crypto/sha1"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -107,6 +108,10 @@ func (c Client) GetComments(taskID uint) ([]Comment, error) {
 	if err != nil {
 		log.Print("[TodoistClient#GetComments] Error during decoding todoist response", err)
 		return nil, err
+	}
+
+	for i := range comments {
+		comments[i].HashSum = sha1.Sum([]byte(comments[i].Content))
 	}
 
 	log.Print("[TodoistClient#GetComments] Comments fetched successfully")
