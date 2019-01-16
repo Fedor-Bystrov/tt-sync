@@ -30,10 +30,10 @@ func init() {
 	defer elapsed("[Elapsed] INIT")()
 	checkVars(todoistToken)
 
-	// 1. Open connection to mongodb
+	log.Print("[Main#init] Connecting to mongo")
 	client, err := mongo.Connect(ctx, "mongodb://localhost:27017")
 
-	// 2. Set up logging
+	// Set up logging
 	if goEnv != "development" {
 		logFile, err := os.OpenFile("todoist-resolver.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
@@ -42,12 +42,12 @@ func init() {
 		log.SetOutput(logFile)
 	}
 
-	// 3. Check that connection established
+	// Check that connection established
 	err = client.Ping(ctx, readpref.Primary())
 	if err != nil {
 		log.Fatalf("Fatal [Main#init] Error connecting to mongo: %v", err)
 	}
-	log.Print("[Main#init] Connection to mongo established")
+	log.Print("[Main#init] Connection established")
 }
 
 func main() {

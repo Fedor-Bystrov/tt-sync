@@ -12,10 +12,9 @@ type Comment struct {
 	ProjectID uint `json:"project_id"`
 	Posted    time.Time
 	Content   string
-	HashSum   [20]byte `json:"-"`
 }
 
 func (c Comment) String() string {
-	return fmt.Sprintf("Comment{id: %d, task_id: %d, project_id: %d, content: %s, posted: %v, hash_sum: %x}",
-		c.ID, c.TaskID, c.ProjectID, c.Content, c.Posted, c.HashSum)
+	return fmt.Sprintf("Comment{id: %d, task_id: %d, project_id: %d, content: %s, posted: %v}",
+		c.ID, c.TaskID, c.ProjectID, c.Content, c.Posted)
 }
